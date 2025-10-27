@@ -1,0 +1,11 @@
+set(LOS2FreeRTOS_SOURCES
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/task.c"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/los2freertos.c"
+)
+
+set(LOS2FreeRTOS_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/include")
+
+add_library(LOS2FreeRTOS STATIC "${LOS2FreeRTOS_SOURCES}")
+target_include_directories(LOS2FreeRTOS PRIVATE "${LOS2FreeRTOS_INCLUDE_DIRS}")
+
+set(LOS2FreeRTOS_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/include" PARENT_SCOPE)

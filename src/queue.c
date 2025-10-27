@@ -29,7 +29,7 @@ typedef struct {
 /**
  * 尝试初始化QueueHandleTable，若已初始化(标志位为1)则返回
  */
-inline void queue_handle_table_check_init() {
+void queue_handle_table_check_init() {
 	if (queue_handle_table_init_flag)
 		return;
 	queue_handle_table_init_flag = 1;
@@ -114,8 +114,12 @@ uint32_t LOS_QueueWriteCopy(uint32_t queue_id, void* buffer, const uint32_t buff
 
 	// 创建发送的消息
 	const DynamicMessage message = {.data = malloc(buffer_size), .size = buffer_size};
-	// 值拷贝
-	copy_src2dst(message.data, buffer, buffer_size);
+	// 计算拷贝的字节数
+	uint32_t size = message.size;
+	if (size > buffer_size )
+		size = buffer_size;
+	// 值拷贝, 当buffer大小不够时, 拷贝截断
+	copy_src2dst(message.data, buffer, size);
 	// 发送消息
 	const BaseType_t status = xQueueSend(*handle, &message, timeout);
 	if (status == pdPASS)

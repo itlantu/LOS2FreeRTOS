@@ -1,6 +1,7 @@
 set(LOS2FreeRTOS_SOURCES
         "${CMAKE_CURRENT_SOURCE_DIR}/src/task.c"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/los2freertos.c"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/queue.c"
 )
 
 set(LOS2FreeRTOS_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/include")

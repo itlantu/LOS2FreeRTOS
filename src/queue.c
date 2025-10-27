@@ -79,6 +79,11 @@ int queue_handle_table_create(uint32_t* queue_id) {
  * @param bytes 拷贝的字节数
  */
 void copy_src2dst(void* dst, void* src, uint32_t bytes) {
+	if (dst == NULL || src == NULL)
+		return;
+	if (bytes == 0)
+		return;
+
 	uint32_t i = 0;
 	// 先循环拷贝4字节数据
 	int32_t* dst_32bit = (int32_t*)dst, *src_32bit = (int32_t*)src;

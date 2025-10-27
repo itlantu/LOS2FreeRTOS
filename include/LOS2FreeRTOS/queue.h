@@ -16,7 +16,7 @@ uint32_t LOS_QueueCreate(const char* name, uint16_t length, uint32_t* queue_id, 
 								 VOID *bufferAddr,
 								 UINT32 bufferSize,
 								 UINT32 timeOut);*/
-uint32_t LOS_QueueWriteCopy(uint32_t queue_id, void* buffer, const uint32_t* buffer_size, uint32_t timeout);
+uint32_t LOS_QueueWriteCopy(uint32_t queue_id, void* buffer,uint32_t buffer_size, uint32_t timeout);
 
 /* extern UINT32 LOS_QueueReadCopy(UINT32 queueID,
                                 VOID *bufferAddr,

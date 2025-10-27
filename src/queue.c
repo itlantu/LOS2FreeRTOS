@@ -16,6 +16,11 @@ struct {
 	QueueHandle_t table[LOS2FREERTOS_CONFIG_QUEUE_MAX_NUM];
 }QueueHandleTable;
 
+/**
+ * DynamicMessage动态消息
+ *	size: 表示消息数据的大小，单位为字节
+ *	data: 指针类型, 指向具体消息数据的内存地址
+ */
 typedef struct {
 	uint32_t size;
 	void* data;
@@ -102,15 +107,15 @@ uint32_t LOS_QueueCreate(const char* name,
 	return LOS_OK;
 }
 
-uint32_t LOS_QueueWriteCopy(uint32_t queue_id, void* buffer, const uint32_t* buffer_size, uint32_t timeout) {
+uint32_t LOS_QueueWriteCopy(uint32_t queue_id, void* buffer, const uint32_t buffer_size, uint32_t timeout) {
 	const QueueHandle_t * handle = queue_handle_table_get(queue_id);
 	if (handle == NULL)
 		return LOS_NOK;
 
 	// 创建发送的消息
-	const DynamicMessage message = {.data = malloc(*buffer_size), .size = *buffer_size};
+	const DynamicMessage message = {.data = malloc(buffer_size), .size = buffer_size};
 	// 值拷贝
-	copy_src2dst(message.data, buffer, *buffer_size);
+	copy_src2dst(message.data, buffer, buffer_size);
 	// 发送消息
 	const BaseType_t status = xQueueSend(*handle, &message, timeout);
 	if (status == pdPASS)

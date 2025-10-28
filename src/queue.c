@@ -58,8 +58,8 @@ int queue_handle_table_create(uint32_t* queue_id) {
 	uint32_t use_flag = QueueHandleTable.use_flag;
 
 	// 根据标志位查找是否有空余分配位置
-	for (int i = 0; i < LOS2FREERTOS_CONFIG_QUEUE_MAX_NUM; ++i, use_flag >>= 1) {
-		if (use_flag & 1) {
+	for (int i = 0; i < LOS2FREERTOS_CONFIG_QUEUE_MAX_NUM; ++i) {
+		if (!(use_flag & (1 << i))) {
 			// 初始化值
 			QueueHandleTable.table[i] = NULL;
 			// 更新queue_id

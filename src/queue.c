@@ -116,15 +116,10 @@ uint32_t LOS_QueueWriteCopy(uint32_t queue_id, void* buffer, const uint32_t buff
 	const QueueHandle_t * handle = queue_handle_table_get(queue_id);
 	if (handle == NULL)
 		return LOS_NOK;
-
 	// 创建发送的消息
 	const DynamicMessage message = {.data = malloc(buffer_size), .size = buffer_size};
-	// 计算拷贝的字节数
-	uint32_t size = message.size;
-	if (size > buffer_size )
-		size = buffer_size;
-	// 值拷贝, 当buffer大小不够时, 拷贝截断
-	copy_src2dst(message.data, buffer, size);
+	// 拷贝消息
+	copy_src2dst(message.data, buffer, buffer_size);
 	// 发送消息
 	const BaseType_t status = xQueueSend(*handle, &message, timeout);
 	if (status == pdPASS)
@@ -143,9 +138,12 @@ uint32_t LOS_QueueReadCopy(const uint32_t queue_id, void* buffer, uint32_t* buff
 	DynamicMessage message;
 	if (xQueueReceive(*handle, &message, timeout) != pdPASS)
 		return LOS_NOK;
-
-	// 拷贝到buffer
-	copy_src2dst(buffer, message.data, message.size);
+	// 计算拷贝的字节数
+	uint32_t size = message.size;
+	if (size > *buffer_size)
+		size = *buffer_size;
+	// 值拷贝, 当buffer大小不够时, 拷贝截断
+	copy_src2dst(buffer, message.data, size);
 	// 释放内存
 	free(message.data);
 

@@ -4,6 +4,8 @@
 #include "FreeRTOS.h"
 #include "queue.h"
 
+#include <sys/types.h>
+
 char queue_handle_table_init_flag = 0;
 
 /**
@@ -34,18 +36,20 @@ void queue_handle_table_check_init() {
 		return;
 	queue_handle_table_init_flag = 1;
 	QueueHandleTable.use_flag = 0;
+	for (uint32_t i = 0; i < LOS2FREERTOS_CONFIG_QUEUE_MAX_NUM; ++i)
+		QueueHandleTable.table[i] = NULL;
 }
 
 /**
- * 根据ID来获取FreeRTOS中消息队列对应的的句柄
+ * 检查queue_id是否合法
  * @param queue_id 消息队列ID
- * @return 如果消息队列存在, 则返回句柄对应的指针, 若消息队列不存在则返回空指针
+ * @return 错误码, 为0表示queue_id合法, 1表示queue_id不合法
  */
-QueueHandle_t* queue_handle_table_get(const uint32_t queue_id) {
+int queue_handle_table_check_id(const uint32_t queue_id) {
 	queue_handle_table_check_init();
 	if (queue_id >= LOS2FREERTOS_CONFIG_QUEUE_MAX_NUM)
-		return NULL;
-	return &QueueHandleTable.table[queue_id];
+		return 1;
+	return 0;
 }
 
 /**
@@ -60,8 +64,6 @@ int queue_handle_table_create(uint32_t* queue_id) {
 	// 根据标志位查找是否有空余分配位置
 	for (int i = 0; i < LOS2FREERTOS_CONFIG_QUEUE_MAX_NUM; ++i) {
 		if (!(use_flag & (1 << i))) {
-			// 初始化值
-			QueueHandleTable.table[i] = NULL;
 			// 更新queue_id
 			*queue_id = i;
 			// 设置标志位对应的位数为1
@@ -107,36 +109,49 @@ uint32_t LOS_QueueCreate(const char* name,
 	if (queue_handle_table_create(queue_id))
 		// 在使用的队列已经超过设置的最大上限
 		return LOS_NOK;
-	QueueHandle_t* handle = queue_handle_table_get(*queue_id);
-	*handle = xQueueCreate(length, sizeof(DynamicMessage));
+	if (queue_handle_table_create(queue_id))
+		// 分配失败
+		return LOS_NOK;
+	QueueHandleTable.table[*queue_id] = xQueueCreate(length, sizeof(DynamicMessage));
 	return LOS_OK;
 }
 
 uint32_t LOS_QueueWriteCopy(uint32_t queue_id, void* buffer, const uint32_t buffer_size, uint32_t timeout) {
-	const QueueHandle_t * handle = queue_handle_table_get(queue_id);
+	if (queue_handle_table_check_id(queue_id))
+		return LOS_NOK;
+	QueueHandle_t handle = QueueHandleTable.table[queue_id];
 	if (handle == NULL)
 		return LOS_NOK;
+	if (uxQueueSpacesAvailable(handle))
+		// 队列已满
+		return LOS_NOK;
+
 	// 创建发送的消息
 	const DynamicMessage message = {.data = malloc(buffer_size), .size = buffer_size};
 	// 拷贝消息
 	copy_src2dst(message.data, buffer, buffer_size);
+
 	// 发送消息
-	const BaseType_t status = xQueueSend(*handle, &message, timeout);
+	const BaseType_t status = xQueueSend(handle, &message, timeout);
 	if (status == pdPASS)
 		return LOS_OK;
+
 	// 发送失败, 释放内存
 	free(message.data);
 	return LOS_NOK;
 }
 
 uint32_t LOS_QueueReadCopy(const uint32_t queue_id, void* buffer, uint32_t* buffer_size, const uint32_t timeout) {
-	const QueueHandle_t * handle = queue_handle_table_get(queue_id);
+	if (queue_handle_table_check_id(queue_id))
+		return LOS_NOK;
+
+	const QueueHandle_t handle = QueueHandleTable.table[queue_id];
 	if (handle == NULL)
 		return LOS_NOK;
 
 	// 接收消息
 	DynamicMessage message;
-	if (xQueueReceive(*handle, &message, timeout) != pdPASS)
+	if (xQueueReceive(handle, &message, timeout) != pdPASS)
 		return LOS_NOK;
 	// 计算拷贝的字节数
 	uint32_t size = message.size;

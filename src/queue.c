@@ -64,6 +64,7 @@ int queue_handle_table_create(uint32_t* queue_id) {
 	// 根据标志位查找是否有空余分配位置
 	for (int i = 0; i < LOS2FREERTOS_CONFIG_QUEUE_MAX_NUM; ++i) {
 		if (!(use_flag & (1 << i))) {
+			QueueHandleTable.table[i] = NULL;
 			// 更新queue_id
 			*queue_id = i;
 			// 设置标志位对应的位数为1
@@ -86,17 +87,22 @@ void copy_src2dst(void* dst, void* src, uint32_t bytes) {
 	if (bytes == 0)
 		return;
 
-	uint32_t i = 0;
-	// 先循环拷贝4字节数据
-	int32_t* dst_32bit = (int32_t*)dst, *src_32bit = (int32_t*)src;
-	for (const uint32_t size = bytes >> 2; i < size; ++i) {
-		dst_32bit[i] = src_32bit[i];
-	}
-
-	// 循环拷贝剩余的字节
-	int8_t* dst_8bit = (int8_t*)dst, *src_8bit = (int8_t*)src;
-	for (uint32_t j = i << 2; j < bytes; ++j) {
-		dst_8bit[j] = src_8bit[i];
+	// uint32_t i = 0;
+	// // 先循环拷贝4字节数据
+	// int32_t* dst_32bit = (int32_t*)dst, *src_32bit = (int32_t*)src;
+	// for (const uint32_t size = bytes >> 2; i < size; ++i) {
+	// 	dst_32bit[i] = src_32bit[i];
+	// }
+	//
+	// // 循环拷贝剩余的字节
+	// int8_t* dst_8bit = (int8_t*)dst, *src_8bit = (int8_t*)src;
+	// for (uint32_t j = i << 2; j < bytes; ++j) {
+	// 	dst_8bit[j] = src_8bit[i];
+	// }
+	int8_t* dst_8bit = (int8_t*) dst;
+	const int8_t *src_8bit = (int8_t *) src;
+	for (uint32_t i = 0; i < bytes; ++i) {
+		dst_8bit[i] = src_8bit[i];
 	}
 }
 
@@ -113,18 +119,22 @@ uint32_t LOS_QueueCreate(const char* name,
 		// 分配失败
 		return LOS_NOK;
 	QueueHandleTable.table[*queue_id] = xQueueCreate(length, sizeof(DynamicMessage));
+	if (!uxQueueSpacesAvailable(QueueHandleTable.table[*queue_id]))
+		return LOS_NOK;
 	return LOS_OK;
 }
 
 uint32_t LOS_QueueWriteCopy(uint32_t queue_id, void* buffer, const uint32_t buffer_size, uint32_t timeout) {
+	// todo 完善错误返回值信息
 	if (queue_handle_table_check_id(queue_id))
-		return LOS_NOK;
+		return 1;
 	QueueHandle_t handle = QueueHandleTable.table[queue_id];
 	if (handle == NULL)
-		return LOS_NOK;
-	if (uxQueueSpacesAvailable(handle))
+		return 2;
+
+	if (!uxQueueSpacesAvailable(handle))
 		// 队列已满
-		return LOS_NOK;
+		return 3;
 
 	// 创建发送的消息
 	const DynamicMessage message = {.data = malloc(buffer_size), .size = buffer_size};
@@ -141,11 +151,12 @@ uint32_t LOS_QueueWriteCopy(uint32_t queue_id, void* buffer, const uint32_t buff
 	return LOS_NOK;
 }
 
+#include <stdio.h>
 uint32_t LOS_QueueReadCopy(const uint32_t queue_id, void* buffer, uint32_t* buffer_size, const uint32_t timeout) {
 	if (queue_handle_table_check_id(queue_id))
 		return LOS_NOK;
 
-	const QueueHandle_t handle = QueueHandleTable.table[queue_id];
+	QueueHandle_t handle = QueueHandleTable.table[queue_id];
 	if (handle == NULL)
 		return LOS_NOK;
 
